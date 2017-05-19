@@ -2,9 +2,9 @@
 > NATS application metrics package
 
 [![Build Status](https://travis-ci.org/cryptopay-dev/go-metrics.svg?branch=master)](https://travis-ci.org/cryptopay-dev/go-metrics)
+[![codecov](https://codecov.io/gh/cryptopay-dev/go-metrics/branch/master/graph/badge.svg)](https://codecov.io/gh/cryptopay-dev/go-metrics)
 [![GoDoc](https://godoc.org/github.com/cryptopay-dev/go-metrics?status.svg)](https://godoc.org/github.com/cryptopay-dev/go-metrics)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cryptopay-dev/go-metrics)](https://goreportcard.com/report/github.com/cryptopay-dev/go-metrics)
-
 
 ## Installation
 ```bash
