@@ -1,5 +1,6 @@
 # Golang application metrics
 > NATS application metrics package
+[![Build Status](https://travis-ci.org/cryptopay-dev/go-metrics.svg?branch=master)](https://travis-ci.org/cryptopay-dev/go-metrics)
 
 
 ## Installation
