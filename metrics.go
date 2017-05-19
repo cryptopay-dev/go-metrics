@@ -105,7 +105,7 @@ func Setup(url string, options ...nats.Option) error {
 //     }
 // }
 func New(url string, options ...nats.Option) (*conn, error) {
-	if os.Getenv("INFLUX_METRICS_ENABLED") == "" {
+	if url == "" {
 		return &conn{
 			enabled: false,
 		}, nil

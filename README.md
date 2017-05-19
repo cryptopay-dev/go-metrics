@@ -13,7 +13,6 @@ go get github.com/cryptopay-dev/go-metrics
 
 ## Prerequisites
 There should be 2 `env` variables defined:
-- `INFLUX_METRICS_ENABLED` - to enable metrics at all
 - `APPLICATION_NAME` - application name should be send
 
 ## Default metrics tags

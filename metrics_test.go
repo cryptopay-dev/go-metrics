@@ -24,7 +24,6 @@ func generateMetric() M {
 }
 
 func TestMain(t *testing.M) {
-	os.Setenv("INFLUX_METRICS_ENABLED", "TRUE")
 	os.Setenv("APPLICATION_NAME", "default")
 	t.Run()
 }
@@ -61,9 +60,7 @@ func TestMetrics(t *testing.T) {
 	})
 
 	t.Run("Disabled metrics", func(t *testing.T) {
-		os.Setenv("INFLUX_METRICS_ENABLED", "")
-		metrics, err := New(nats.DefaultURL)
-		os.Setenv("INFLUX_METRICS_ENABLED", "TRUE")
+		metrics, err := New("")
 
 		assert.NoError(t, err)
 		assert.True(t, metrics != nil)
