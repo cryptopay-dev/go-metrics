@@ -37,7 +37,7 @@ func TestMetrics(t *testing.T) {
 		assert.True(t, metrics == nil)
 	})
 
-	t.Run("Unkown server setup", func(t *testing.T) {
+	t.Run("Unknown server setup", func(t *testing.T) {
 		err := Setup("1.1.1.1:1111", "metrics")
 
 		assert.Error(t, err)
@@ -88,7 +88,7 @@ func TestMetrics(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, metrics != nil)
 
-		t.Run("Syncronous send", func(t *testing.T) {
+		t.Run("Synchronous send", func(t *testing.T) {
 			err := metrics.SendAndWait(generateMetric())
 			assert.NoError(t, err)
 		})
@@ -106,7 +106,7 @@ func TestMetrics(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, DefaultConn != nil)
 
-		t.Run("Syncronous send", func(t *testing.T) {
+		t.Run("Synchronous send", func(t *testing.T) {
 			err := SendAndWait(generateMetric())
 			assert.NoError(t, err)
 		})
