@@ -132,4 +132,22 @@ func TestMetrics(t *testing.T) {
 
 		assert.True(t, <-done)
 	})
+
+	t.Run("Auto sending default connection", func(t *testing.T) {
+		err := Setup(nats.DefaultURL)
+
+		assert.NoError(t, err)
+		assert.True(t, DefaultConn != nil)
+
+		done := make(chan bool, 1)
+		go func() {
+			DefaultConn.Watch(100)
+			done <- true
+		}()
+
+		time.Sleep(time.Millisecond * 500)
+		DefaultConn.Disable()
+
+		assert.True(t, <-done)
+	})
 }

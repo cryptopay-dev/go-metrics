@@ -246,3 +246,8 @@ func (m *conn) Watch(interval int) {
 		time.Sleep(time.Millisecond * time.Duration(interval))
 	}
 }
+
+// Watch watches memory, goroutine counter
+func Watch(interval int) {
+	DefaultConn.Watch(interval)
+}
