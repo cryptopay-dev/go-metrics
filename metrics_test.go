@@ -141,12 +141,12 @@ func TestMetrics(t *testing.T) {
 
 		done := make(chan bool, 1)
 		go func() {
-			DefaultConn.Watch(100)
+			Watch(100)
 			done <- true
 		}()
 
 		time.Sleep(time.Millisecond * 500)
-		DefaultConn.Disable()
+		Disable()
 
 		assert.True(t, <-done)
 	})

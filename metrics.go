@@ -219,6 +219,15 @@ func (m *conn) Disable() {
 	m.nats.Close()
 }
 
+// Disable disables watcher and disconnects
+func Disable() {
+	DefaultConn.mu.Lock()
+	defer DefaultConn.mu.Unlock()
+
+	DefaultConn.enabled = false
+	DefaultConn.nats.Close()
+}
+
 // Watch watches memory, goroutine counter
 func (m *conn) Watch(interval int) {
 	var mem runtime.MemStats
