@@ -11,6 +11,8 @@ import (
 	"github.com/nats-io/go-nats"
 )
 
+const queue = "telegraph"
+
 type conn struct {
 	mu          sync.RWMutex
 	nats        *nats.Conn
@@ -38,7 +40,6 @@ var DefaultConn *conn
 //
 // Params:
 // - url (in e.g. "nats://localhost:4222")
-// - queue (in e.g. "metrics")
 // - options nats.Option array
 //
 // Example:
@@ -49,7 +50,7 @@ var DefaultConn *conn
 // )
 //
 // func main() {
-//     err := metrics.Setup("nats://localhost:4222", "metrics")
+//     err := metrics.Setup("nats://localhost:4222")
 //     if err != nil {
 //         log.Fatal(err)
 //     }
@@ -64,8 +65,8 @@ var DefaultConn *conn
 //         }
 //     }
 // }
-func Setup(url, queue string, options ...nats.Option) error {
-	metrics, err := New(url, queue, options...)
+func Setup(url string, options ...nats.Option) error {
+	metrics, err := New(url, options...)
 	if err != nil {
 		return err
 	}
@@ -78,7 +79,6 @@ func Setup(url, queue string, options ...nats.Option) error {
 //
 // Params:
 // - url (in e.g. "nats://localhost:4222")
-// - queue (in e.g. "metrics")
 // - options nats.Option array
 //
 // Example:
@@ -89,7 +89,7 @@ func Setup(url, queue string, options ...nats.Option) error {
 // )
 //
 // func main() {
-//     m, err := metrics.New("nats://localhost:4222", "metrics")
+//     m, err := metrics.New("nats://localhost:4222")
 //     if err != nil {
 //         log.Fatal(err)
 //     }
@@ -104,7 +104,7 @@ func Setup(url, queue string, options ...nats.Option) error {
 //         }
 //     }
 // }
-func New(url, queue string, options ...nats.Option) (*conn, error) {
+func New(url string, options ...nats.Option) (*conn, error) {
 	if os.Getenv("INFLUX_METRICS_ENABLED") == "" {
 		return &conn{
 			enabled: false,
@@ -115,10 +115,6 @@ func New(url, queue string, options ...nats.Option) (*conn, error) {
 	app := os.Getenv("APPLICATION_NAME")
 	if app == "" {
 		return nil, errors.New("Application name not set")
-	}
-
-	if queue == "" {
-		return nil, errors.New("Queue cannot be empty")
 	}
 
 	// Getting hostname up
