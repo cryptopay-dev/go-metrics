@@ -11,16 +11,13 @@ import (
 	"github.com/nats-io/go-nats"
 )
 
-const queue = "telegraph"
-
 type conn struct {
-	mu          sync.RWMutex
-	nats        *nats.Conn
-	enabled     bool
-	queue       string
-	url         string
-	hostname    string
-	application string
+	mu       sync.RWMutex
+	nats     *nats.Conn
+	enabled  bool
+	queue    string
+	url      string
+	hostname string
 }
 
 // M metrics storage
@@ -65,8 +62,8 @@ var DefaultConn *conn
 //         }
 //     }
 // }
-func Setup(url string, options ...nats.Option) error {
-	metrics, err := New(url, options...)
+func Setup(url string, queue string, options ...nats.Option) error {
+	metrics, err := New(url, queue, options...)
 	if err != nil {
 		return err
 	}
@@ -104,7 +101,7 @@ func Setup(url string, options ...nats.Option) error {
 //         }
 //     }
 // }
-func New(url string, options ...nats.Option) (*conn, error) {
+func New(url string, queue string, options ...nats.Option) (*conn, error) {
 	if url == "" {
 		return &conn{
 			enabled: false,
@@ -112,9 +109,8 @@ func New(url string, options ...nats.Option) (*conn, error) {
 	}
 
 	// Getting current environment
-	app := os.Getenv("APPLICATION_NAME")
-	if app == "" {
-		return nil, errors.New("Application name not set")
+	if queue == "" {
+		return nil, errors.New("Queue name not set")
 	}
 
 	// Getting hostname up
@@ -129,11 +125,10 @@ func New(url string, options ...nats.Option) (*conn, error) {
 	}
 
 	conn := &conn{
-		nats:        nc,
-		hostname:    hostname,
-		application: app,
-		enabled:     true,
-		queue:       queue,
+		nats:     nc,
+		hostname: hostname,
+		enabled:  true,
+		queue:    queue,
 	}
 
 	return conn, nil
@@ -195,7 +190,6 @@ func (m *conn) SendAndWait(metrics M) error {
 
 	m.mu.RLock()
 	metrics["hostname"] = m.hostname
-	metrics["app"] = m.application
 	m.mu.RUnlock()
 
 	buf, err := json.Marshal(metrics)

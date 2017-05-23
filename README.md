@@ -11,10 +11,6 @@
 go get github.com/cryptopay-dev/go-metrics
 ```
 
-## Prerequisites
-There should be 2 `env` variables defined:
-- `APPLICATION_NAME` - application name should be send
-
 ## Default metrics tags
 ```
 hostname - application host
@@ -29,7 +25,6 @@ app - application name
     "gc":            1495532586, // timestamp of last GC
     "next_gc":       9000000, // heap size when GC will be run next time
     "pause_ns":      100 // pause time of GC
-    
 ```
 
 ## Usage

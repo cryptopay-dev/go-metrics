@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"math/rand"
-	"os"
 	"testing"
 	"time"
 
@@ -23,44 +22,30 @@ func generateMetric() M {
 	}
 }
 
-func TestMain(t *testing.M) {
-	os.Setenv("APPLICATION_NAME", "default")
-	t.Run()
-}
-
 func TestMetrics(t *testing.T) {
 	t.Run("Unknown server", func(t *testing.T) {
-		metrics, err := New("1.1.1.1:1111")
+		metrics, err := New("1.1.1.1:1111", "metrics")
 
 		assert.Error(t, err)
 		assert.True(t, metrics == nil)
 	})
 
 	t.Run("Unknown server setup", func(t *testing.T) {
-		err := Setup("1.1.1.1:1111")
+		err := Setup("1.1.1.1:1111", "metrics")
 
 		assert.Error(t, err)
 		assert.True(t, DefaultConn == nil)
 	})
 
 	t.Run("Empty application", func(t *testing.T) {
-		os.Setenv("APPLICATION_NAME", "")
-		metrics, err := New("1.1.1.1:1111")
-
-		assert.Error(t, err)
-		assert.True(t, metrics == nil)
-		os.Setenv("APPLICATION_NAME", "default")
-	})
-
-	t.Run("Empty queue", func(t *testing.T) {
-		metrics, err := New("1.1.1.1:1111")
+		metrics, err := New("1.1.1.1:1111", "")
 
 		assert.Error(t, err)
 		assert.True(t, metrics == nil)
 	})
 
 	t.Run("Disabled metrics", func(t *testing.T) {
-		metrics, err := New("")
+		metrics, err := New("", "metrics")
 
 		assert.NoError(t, err)
 		assert.True(t, metrics != nil)
@@ -70,7 +55,7 @@ func TestMetrics(t *testing.T) {
 	})
 
 	t.Run("Empty metrics", func(t *testing.T) {
-		metrics, err := New(nats.DefaultURL)
+		metrics, err := New(nats.DefaultURL, "metrics")
 
 		assert.NoError(t, err)
 		assert.True(t, metrics != nil)
@@ -80,7 +65,7 @@ func TestMetrics(t *testing.T) {
 	})
 
 	t.Run("Connection", func(t *testing.T) {
-		metrics, err := New(nats.DefaultURL)
+		metrics, err := New(nats.DefaultURL, "metrics")
 
 		assert.NoError(t, err)
 		assert.True(t, metrics != nil)
@@ -98,7 +83,7 @@ func TestMetrics(t *testing.T) {
 	})
 
 	t.Run("Default connection", func(t *testing.T) {
-		err := Setup(nats.DefaultURL)
+		err := Setup(nats.DefaultURL, "metrics")
 
 		assert.NoError(t, err)
 		assert.True(t, DefaultConn != nil)
@@ -116,7 +101,7 @@ func TestMetrics(t *testing.T) {
 	})
 
 	t.Run("Auto sending", func(t *testing.T) {
-		metrics, err := New(nats.DefaultURL)
+		metrics, err := New(nats.DefaultURL, "metrics")
 
 		assert.NoError(t, err)
 		assert.True(t, metrics != nil)
@@ -134,7 +119,7 @@ func TestMetrics(t *testing.T) {
 	})
 
 	t.Run("Auto sending default connection", func(t *testing.T) {
-		err := Setup(nats.DefaultURL)
+		err := Setup(nats.DefaultURL, "metrics")
 
 		assert.NoError(t, err)
 		assert.True(t, DefaultConn != nil)
