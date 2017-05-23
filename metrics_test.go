@@ -108,7 +108,7 @@ func TestMetrics(t *testing.T) {
 
 		done := make(chan bool, 1)
 		go func() {
-			metrics.Watch(100)
+			metrics.Watch(time.Millisecond * 100)
 			done <- true
 		}()
 
@@ -126,7 +126,7 @@ func TestMetrics(t *testing.T) {
 
 		done := make(chan bool, 1)
 		go func() {
-			Watch(100)
+			Watch(time.Millisecond * 100)
 			done <- true
 		}()
 

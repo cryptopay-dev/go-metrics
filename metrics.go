@@ -223,7 +223,7 @@ func Disable() {
 }
 
 // Watch watches memory, goroutine counter
-func (m *conn) Watch(interval int) {
+func (m *conn) Watch(interval time.Duration) error {
 	var mem runtime.MemStats
 
 	for {
@@ -245,12 +245,18 @@ func (m *conn) Watch(interval int) {
 			"next_gc":       mem.NextGC,
 			"pause_ns":      mem.PauseNs[(mem.NumGC+255)%256],
 		}
-		m.SendAndWait(metric)
-		time.Sleep(time.Millisecond * time.Duration(interval))
+		err := m.SendAndWait(metric)
+		if err != nil {
+			return err
+		}
+
+		time.Sleep(interval)
 	}
+
+	return nil
 }
 
 // Watch watches memory, goroutine counter
-func Watch(interval int) {
+func Watch(interval time.Duration) {
 	DefaultConn.Watch(interval)
 }
