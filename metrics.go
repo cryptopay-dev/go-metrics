@@ -243,15 +243,15 @@ func (m *conn) Watch(interval int) {
 
 		// Getting memory stats
 		runtime.ReadMemStats(&mem)
-
 		metric := M{
-			"alloc":       mem.Alloc,
-			"heap_alloc":  mem.HeapAlloc,
-			"total_alloc": mem.TotalAlloc,
-			"gorotines":   runtime.NumGoroutine(),
+			"alloc":         mem.Alloc,
+			"alloc_objects": mem.HeapObjects,
+			"gorotines":     runtime.NumGoroutine(),
+			"gc":            mem.LastGC,
+			"next_gc":       mem.NextGC,
+			"pause_ns":      mem.PauseNs[(mem.NumGC+255)%256],
 		}
 		m.SendAndWait(metric)
-
 		time.Sleep(time.Millisecond * time.Duration(interval))
 	}
 }
