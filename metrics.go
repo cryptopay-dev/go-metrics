@@ -12,12 +12,13 @@ import (
 )
 
 type conn struct {
-	mu       sync.RWMutex
-	nats     *nats.Conn
-	enabled  bool
-	queue    string
-	url      string
-	hostname string
+	mu          sync.RWMutex
+	nats        *nats.Conn
+	enabled     bool
+	queue       string
+	url         string
+	hostname    string
+	application string
 }
 
 // M metrics storage
@@ -32,6 +33,9 @@ type M map[string]interface{}
 // DefaultConn shared default metric
 // connection
 var DefaultConn *conn
+
+// DefaultQueue is queue where we puts event into NATS
+const DefaultQueue = "telegraf"
 
 // Setup rewrites default metrics configuration
 //
@@ -62,8 +66,8 @@ var DefaultConn *conn
 //         }
 //     }
 // }
-func Setup(url string, queue string, options ...nats.Option) error {
-	metrics, err := New(url, queue, options...)
+func Setup(url string, application string, options ...nats.Option) error {
+	metrics, err := New(url, application, options...)
 	if err != nil {
 		return err
 	}
@@ -101,7 +105,7 @@ func Setup(url string, queue string, options ...nats.Option) error {
 //         }
 //     }
 // }
-func New(url string, queue string, options ...nats.Option) (*conn, error) {
+func New(url string, application string, options ...nats.Option) (*conn, error) {
 	if url == "" {
 		return &conn{
 			enabled: false,
@@ -109,8 +113,8 @@ func New(url string, queue string, options ...nats.Option) (*conn, error) {
 	}
 
 	// Getting current environment
-	if queue == "" {
-		return nil, errors.New("Queue name not set")
+	if application == "" {
+		return nil, errors.New("Application name not set")
 	}
 
 	// Getting hostname up
@@ -125,10 +129,11 @@ func New(url string, queue string, options ...nats.Option) (*conn, error) {
 	}
 
 	conn := &conn{
-		nats:     nc,
-		hostname: hostname,
-		enabled:  true,
-		queue:    queue,
+		nats:        nc,
+		hostname:    hostname,
+		enabled:     true,
+		queue:       DefaultQueue,
+		application: application,
 	}
 
 	return conn, nil
@@ -190,6 +195,7 @@ func (m *conn) SendAndWait(metrics M) error {
 
 	m.mu.RLock()
 	metrics["hostname"] = m.hostname
+	metrics["application"] = m.application
 	m.mu.RUnlock()
 
 	buf, err := json.Marshal(metrics)
@@ -257,6 +263,6 @@ func (m *conn) Watch(interval time.Duration) error {
 }
 
 // Watch watches memory, goroutine counter
-func Watch(interval time.Duration) {
-	DefaultConn.Watch(interval)
+func Watch(interval time.Duration) error {
+	return DefaultConn.Watch(interval)
 }

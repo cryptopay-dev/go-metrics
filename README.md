@@ -38,7 +38,7 @@ import (
 )
 
 func main() {
-    err := metrics.Setup("nats://localhost:4222", "metrics")
+    err := metrics.Setup("nats://localhost:4222", "my_application_name")
     if err != nil {
         log.Fatal(err)
     }
