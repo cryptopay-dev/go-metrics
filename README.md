@@ -21,6 +21,17 @@ hostname - application host
 app - application name
 ```
 
+## Metrics
+```json
+    "alloc":         8810230, // memory allocated in bytes
+    "alloc_objects": 123, // total heap objects allocated
+    "gorotines":     10, // number of goroutines
+    "gc":            1495532586, // timestamp of last GC
+    "next_gc":       9000000, // heap size when GC will be run next time
+    "pause_ns":      100 // pause time of GC
+    
+```
+
 ## Usage
 ```go
 package main
