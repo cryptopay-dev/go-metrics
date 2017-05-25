@@ -23,6 +23,18 @@ func generateMetric() M {
 }
 
 func TestMetrics(t *testing.T) {
+	t.Run("No setup", func(t *testing.T) {
+		var err error
+
+		Disable()
+		chanErr := Send(M{"field": 1})
+		assert.True(t, chanErr == nil)
+		err = SendAndWait(M{"field": 1})
+		assert.NoError(t, err)
+		err = Watch(time.Second)
+		assert.NoError(t, err)
+	})
+
 	t.Run("Unknown server", func(t *testing.T) {
 		metrics, err := New("1.1.1.1:1111", "metrics")
 

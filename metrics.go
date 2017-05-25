@@ -146,6 +146,10 @@ func New(url string, application string, options ...nats.Option) (*conn, error) 
 // 		"counter": i,
 // })
 func Send(metrics M) (err chan error) {
+	if DefaultConn == nil {
+		return nil
+	}
+
 	return DefaultConn.Send(metrics)
 }
 
@@ -156,6 +160,10 @@ func Send(metrics M) (err chan error) {
 // 		"counter": i,
 // })
 func SendAndWait(metrics M) error {
+	if DefaultConn == nil {
+		return nil
+	}
+
 	return DefaultConn.SendAndWait(metrics)
 }
 
@@ -221,6 +229,10 @@ func (m *conn) Disable() {
 
 // Disable disables watcher and disconnects
 func Disable() {
+	if DefaultConn == nil {
+		return
+	}
+
 	DefaultConn.mu.Lock()
 	defer DefaultConn.mu.Unlock()
 
@@ -264,5 +276,9 @@ func (m *conn) Watch(interval time.Duration) error {
 
 // Watch watches memory, goroutine counter
 func Watch(interval time.Duration) error {
+	if DefaultConn == nil {
+		return nil
+	}
+
 	return DefaultConn.Watch(interval)
 }
