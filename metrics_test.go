@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -19,7 +20,36 @@ func generateMetric() M {
 		"int":     rand.Int(),
 		"float64": rand.Float64(),
 		"float32": rand.Float32(),
+		"bool":    true,
+		"string":  "username",
 	}
+}
+
+func generateTags() T {
+	return T{
+		"username": "user" + string(rand.Intn(100)),
+	}
+}
+
+var natsURL string
+
+func TestMain(m *testing.M) {
+	natsURL = os.Getenv("NATS_URL")
+	if natsURL == "" {
+		natsURL = nats.DefaultURL
+	}
+
+	m.Run()
+}
+
+func TestFormat(t *testing.T) {
+	var f []byte
+
+	f = format("test", M{"m1": 1, "m2": 2, "m3": 3.02, "m4": "string", "m5": true}, T{"t1": "tag-one", "t2": "tag-two"})
+	assert.Equal(t, `test,t1=tag-one,t2=tag-two m1=1,m2=2,m3=3.02,m4="string",m5=true`, string(f))
+
+	f = format("test", M{"m1": 1, "m2": 2, "m3": 3.02, "m4": "string"}, nil)
+	assert.Equal(t, `test m1=1,m2=2,m3=3.02,m4="string"`, string(f))
 }
 
 func TestMetrics(t *testing.T) {
@@ -27,124 +57,136 @@ func TestMetrics(t *testing.T) {
 		var err error
 
 		Disable()
-		chanErr := Send(M{"field": 1})
+		chanErr := Send("test", M{"field": 1}, T{"tag": "hahaha"})
 		assert.True(t, chanErr == nil)
-		err = SendAndWait(M{"field": 1})
+		err = SendAndWait("test", M{"field": 1}, T{"tag": "yahahah"})
 		assert.NoError(t, err)
 		err = Watch(time.Second)
 		assert.NoError(t, err)
 	})
 
 	t.Run("Unknown server", func(t *testing.T) {
-		metrics, err := New("1.1.1.1:1111", "metrics")
+		metrics, err := New("1.1.1.1:1111", "metrics", "localhost")
 
 		assert.Error(t, err)
 		assert.True(t, metrics == nil)
 	})
 
 	t.Run("Unknown server setup", func(t *testing.T) {
-		err := Setup("1.1.1.1:1111", "metrics")
+		err := Setup("1.1.1.1:1111", "metrics", "localhost")
 
 		assert.Error(t, err)
 		assert.True(t, DefaultConn == nil)
 	})
 
 	t.Run("Empty application", func(t *testing.T) {
-		metrics, err := New("1.1.1.1:1111", "")
+		metrics, err := New("1.1.1.1:1111", "", "")
+
+		assert.Error(t, err)
+		assert.True(t, metrics == nil)
+	})
+
+	t.Run("Empty hostname", func(t *testing.T) {
+		metrics, err := New("1.1.1.1:1111", "metrics", "")
 
 		assert.Error(t, err)
 		assert.True(t, metrics == nil)
 	})
 
 	t.Run("Disabled metrics", func(t *testing.T) {
-		metrics, err := New("", "metrics")
+		metrics, err := New("", "metrics", "localhost")
 
 		assert.NoError(t, err)
 		assert.True(t, metrics != nil)
 
-		err = metrics.SendAndWait(generateMetric())
+		err = metrics.SendAndWait("test", generateMetric(), nil)
 		assert.NoError(t, err)
 	})
 
 	t.Run("Empty metrics", func(t *testing.T) {
-		metrics, err := New(nats.DefaultURL, "metrics")
+		metrics, err := New(natsURL, "metrics", "localhost")
 
-		assert.NoError(t, err)
-		assert.True(t, metrics != nil)
+		if assert.NoError(t, err) {
+			assert.True(t, metrics != nil)
 
-		err = metrics.SendAndWait(map[string]interface{}{})
-		assert.NoError(t, err)
+			err = metrics.SendAndWait("test", map[string]interface{}{}, nil)
+			assert.NoError(t, err)
+		}
 	})
 
 	t.Run("Connection", func(t *testing.T) {
-		metrics, err := New(nats.DefaultURL, "metrics")
+		metrics, err := New(natsURL, "metrics", "localhost")
 
-		assert.NoError(t, err)
-		assert.True(t, metrics != nil)
+		if assert.NoError(t, err) {
+			assert.True(t, metrics != nil)
 
-		t.Run("Synchronous send", func(t *testing.T) {
-			err := metrics.SendAndWait(generateMetric())
-			assert.NoError(t, err)
-		})
+			t.Run("Synchronous send", func(t *testing.T) {
+				err := metrics.SendAndWait("test", generateMetric(), generateTags())
+				assert.NoError(t, err)
+			})
 
-		t.Run("Asynchronous send", func(t *testing.T) {
-			result := metrics.Send(generateMetric())
-			err := <-result
-			assert.NoError(t, err)
-		})
+			t.Run("Asynchronous send", func(t *testing.T) {
+				result := metrics.Send("test", generateMetric(), generateTags())
+				err := <-result
+				assert.NoError(t, err)
+			})
+		}
 	})
 
 	t.Run("Default connection", func(t *testing.T) {
-		err := Setup(nats.DefaultURL, "metrics")
+		err := Setup(natsURL, "metrics", "localhost")
 
-		assert.NoError(t, err)
-		assert.True(t, DefaultConn != nil)
+		if assert.NoError(t, err) {
+			assert.True(t, DefaultConn != nil)
 
-		t.Run("Synchronous send", func(t *testing.T) {
-			err := SendAndWait(generateMetric())
-			assert.NoError(t, err)
-		})
+			t.Run("Synchronous send", func(t *testing.T) {
+				err := SendAndWait("test", generateMetric(), generateTags())
+				assert.NoError(t, err)
+			})
 
-		t.Run("Asynchronous send", func(t *testing.T) {
-			result := Send(generateMetric())
-			err := <-result
-			assert.NoError(t, err)
-		})
+			t.Run("Asynchronous send", func(t *testing.T) {
+				result := Send("test", generateMetric(), generateTags())
+				err := <-result
+				assert.NoError(t, err)
+			})
+		}
 	})
 
 	t.Run("Auto sending", func(t *testing.T) {
-		metrics, err := New(nats.DefaultURL, "metrics")
+		metrics, err := New(natsURL, "metrics", "localhost")
 
-		assert.NoError(t, err)
-		assert.True(t, metrics != nil)
+		if assert.NoError(t, err) {
+			assert.True(t, metrics != nil)
 
-		done := make(chan bool, 1)
-		go func() {
-			metrics.Watch(time.Millisecond * 100)
-			done <- true
-		}()
+			done := make(chan bool, 1)
+			go func() {
+				metrics.Watch(time.Millisecond * 100)
+				done <- true
+			}()
 
-		time.Sleep(time.Millisecond * 500)
-		metrics.Disable()
+			time.Sleep(time.Millisecond * 500)
+			metrics.Disable()
 
-		assert.True(t, <-done)
+			assert.True(t, <-done)
+		}
 	})
 
 	t.Run("Auto sending default connection", func(t *testing.T) {
-		err := Setup(nats.DefaultURL, "metrics")
+		err := Setup(natsURL, "metrics", "localhost")
 
-		assert.NoError(t, err)
-		assert.True(t, DefaultConn != nil)
+		if assert.NoError(t, err) {
+			assert.True(t, DefaultConn != nil)
 
-		done := make(chan bool, 1)
-		go func() {
-			Watch(time.Millisecond * 100)
-			done <- true
-		}()
+			done := make(chan bool, 1)
+			go func() {
+				Watch(time.Millisecond * 100)
+				done <- true
+			}()
 
-		time.Sleep(time.Millisecond * 500)
-		Disable()
+			time.Sleep(time.Millisecond * 500)
+			Disable()
 
-		assert.True(t, <-done)
+			assert.True(t, <-done)
+		}
 	})
 }

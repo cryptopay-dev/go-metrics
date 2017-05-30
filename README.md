@@ -38,14 +38,18 @@ import (
 )
 
 func main() {
-    err := metrics.Setup("nats://localhost:4222", "my_application_name")
+    err := metrics.Setup("nats://localhost:4222", "application_name", "hostname")
     if err != nil {
         log.Fatal(err)
     }
 
     for i:=0; i<10; i++ {
-        err = metrics.SendAndWait(metrics.M{
+        // You metrics will be reported at application_name:metric
+        err = metrics.SendAndWait("metric", metrics.M{
             "counter": i,
+            "gauge": true,
+        }, metrics.T{
+            "user": "test@example.com"
         })
 
         if err != nil {

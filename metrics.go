@@ -1,10 +1,12 @@
 package metrics
 
 import (
-	"encoding/json"
+	"bytes"
 	"errors"
-	"os"
+	"fmt"
 	"runtime"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,9 +28,15 @@ type conn struct {
 // m := metrics.M{
 // 	"metric": 1000,
 //	"gauge": 1,
-//	"tag": "some_default_tag"
 // }
 type M map[string]interface{}
+
+// T tags storage
+// Example:
+// m := metrics.T{
+//	"tag": "some_default_tag"
+// }
+type T map[string]string
 
 // DefaultConn shared default metric
 // connection
@@ -66,8 +74,8 @@ const DefaultQueue = "telegraf"
 //         }
 //     }
 // }
-func Setup(url string, application string, options ...nats.Option) error {
-	metrics, err := New(url, application, options...)
+func Setup(url string, application, hostname string, options ...nats.Option) error {
+	metrics, err := New(url, application, hostname, options...)
 	if err != nil {
 		return err
 	}
@@ -105,7 +113,7 @@ func Setup(url string, application string, options ...nats.Option) error {
 //         }
 //     }
 // }
-func New(url string, application string, options ...nats.Option) (*conn, error) {
+func New(url string, application, hostname string, options ...nats.Option) (*conn, error) {
 	if url == "" {
 		return &conn{
 			enabled: false,
@@ -117,10 +125,8 @@ func New(url string, application string, options ...nats.Option) (*conn, error) 
 		return nil, errors.New("Application name not set")
 	}
 
-	// Getting hostname up
-	hostname, err := os.Hostname()
-	if err != nil {
-		return nil, err
+	if hostname == "" {
+		return nil, errors.New("Hostname not set")
 	}
 
 	nc, err := nats.Connect(url, options...)
@@ -145,12 +151,12 @@ func New(url string, application string, options ...nats.Option) (*conn, error) 
 // m.Send(metrics.M{
 // 		"counter": i,
 // })
-func Send(metrics M) (err chan error) {
+func Send(name string, metrics M, tags T) (err chan error) {
 	if DefaultConn == nil {
 		return nil
 	}
 
-	return DefaultConn.Send(metrics)
+	return DefaultConn.Send(name, metrics, tags)
 }
 
 // SendAndWait metrics to NATS queue waiting for response
@@ -159,12 +165,12 @@ func Send(metrics M) (err chan error) {
 // err = m.SendAndWait(metrics.M{
 // 		"counter": i,
 // })
-func SendAndWait(metrics M) error {
+func SendAndWait(name string, metrics M, tags T) error {
 	if DefaultConn == nil {
 		return nil
 	}
 
-	return DefaultConn.SendAndWait(metrics)
+	return DefaultConn.SendAndWait(name, metrics, tags)
 }
 
 // Send metrics to NATS queue
@@ -173,11 +179,11 @@ func SendAndWait(metrics M) error {
 // m.Send(metrics.M{
 // 		"counter": i,
 // })
-func (m *conn) Send(metrics M) chan error {
+func (m *conn) Send(name string, metrics M, tags T) chan error {
 	ch := make(chan error, 1)
 
 	go func() {
-		ch <- m.SendAndWait(metrics)
+		ch <- m.SendAndWait(name, metrics, tags)
 	}()
 
 	return ch
@@ -189,7 +195,7 @@ func (m *conn) Send(metrics M) chan error {
 // err = m.SendAndWait(metrics.M{
 // 		"counter": i,
 // })
-func (m *conn) SendAndWait(metrics M) error {
+func (m *conn) SendAndWait(name string, metrics M, tags T) error {
 	m.mu.RLock()
 	if !m.enabled {
 		m.mu.RUnlock()
@@ -201,15 +207,16 @@ func (m *conn) SendAndWait(metrics M) error {
 		return nil
 	}
 
+	if tags == nil {
+		tags = make(T)
+	}
+
 	m.mu.RLock()
-	metrics["hostname"] = m.hostname
-	metrics["application"] = m.application
+	tags["hostname"] = m.hostname
 	m.mu.RUnlock()
 
-	buf, err := json.Marshal(metrics)
-	if err != nil {
-		return err
-	}
+	metricName := []string{m.application, name}
+	buf := format(strings.Join(metricName, ":"), metrics, tags)
 
 	m.mu.RLock()
 	queue := m.queue
@@ -263,7 +270,7 @@ func (m *conn) Watch(interval time.Duration) error {
 			"next_gc":       mem.NextGC,
 			"pause_ns":      mem.PauseNs[(mem.NumGC+255)%256],
 		}
-		err := m.SendAndWait(metric)
+		err := m.SendAndWait("gostats", metric, nil)
 		if err != nil {
 			return err
 		}
@@ -281,4 +288,53 @@ func Watch(interval time.Duration) error {
 	}
 
 	return DefaultConn.Watch(interval)
+}
+
+func format(name string, metrics M, tags T) []byte {
+	buf := bytes.NewBufferString(name)
+
+	if len(tags) > 0 {
+		var tagKeys []string
+		for k := range tags {
+			tagKeys = append(tagKeys, k)
+		}
+		sort.Strings(tagKeys)
+
+		for _, k := range tagKeys {
+			buf.WriteRune(',')
+			buf.WriteString(k)
+			buf.WriteRune('=')
+			buf.WriteString(tags[k])
+		}
+	}
+
+	buf.WriteRune(' ')
+	count := 0
+
+	var metricKeys []string
+	for k := range metrics {
+		metricKeys = append(metricKeys, k)
+	}
+	sort.Strings(metricKeys)
+
+	for _, k := range metricKeys {
+		if count > 0 {
+			buf.WriteRune(',')
+		}
+		buf.WriteString(k)
+		buf.WriteRune('=')
+
+		v := metrics[k]
+		switch v.(type) {
+		case string:
+			buf.WriteRune('"')
+			buf.WriteString(v.(string))
+			buf.WriteRune('"')
+		default:
+			buf.WriteString(fmt.Sprintf("%v", v))
+		}
+		count++
+	}
+
+	return buf.Bytes()
 }
