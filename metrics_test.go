@@ -57,10 +57,16 @@ func TestMetrics(t *testing.T) {
 		var err error
 
 		Disable()
-		chanErr := Send("test", M{"field": 1}, T{"tag": "hahaha"})
+		chanErr := Send(M{"field": 1}, "test")
 		assert.True(t, chanErr == nil)
-		err = SendAndWait("test", M{"field": 1}, T{"tag": "yahahah"})
+		chanErr = SendWithTags(M{"field": 1}, T{"tag": "string"}, "test")
 		assert.NoError(t, err)
+
+		err = SendAndWait(M{"field": 1}, "test")
+		assert.NoError(t, err)
+		err = SendWithTagsAndWait(M{"field": 1}, T{"tag": "string"}, "test")
+		assert.NoError(t, err)
+
 		err = Watch(time.Second)
 		assert.NoError(t, err)
 	})
@@ -99,7 +105,7 @@ func TestMetrics(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, metrics != nil)
 
-		err = metrics.SendAndWait("test", generateMetric(), nil)
+		err = metrics.SendAndWait(generateMetric(), "test")
 		assert.NoError(t, err)
 	})
 
@@ -109,7 +115,7 @@ func TestMetrics(t *testing.T) {
 		if assert.NoError(t, err) {
 			assert.True(t, metrics != nil)
 
-			err = metrics.SendAndWait("test", map[string]interface{}{}, nil)
+			err = metrics.SendAndWait(map[string]interface{}{}, "test")
 			assert.NoError(t, err)
 		}
 	})
@@ -121,13 +127,25 @@ func TestMetrics(t *testing.T) {
 			assert.True(t, metrics != nil)
 
 			t.Run("Synchronous send", func(t *testing.T) {
-				err := metrics.SendAndWait("test", generateMetric(), generateTags())
+				var err error
+
+				err = metrics.SendAndWait(generateMetric(), "test")
+				assert.NoError(t, err)
+
+				err = metrics.SendWithTagsAndWait(generateMetric(), generateTags(), "test")
 				assert.NoError(t, err)
 			})
 
 			t.Run("Asynchronous send", func(t *testing.T) {
-				result := metrics.Send("test", generateMetric(), generateTags())
-				err := <-result
+				var err error
+				result := make(chan error)
+
+				result = metrics.SendWithTags(generateMetric(), generateTags(), "test")
+				err = <-result
+				assert.NoError(t, err)
+
+				result = metrics.Send(generateMetric(), "test")
+				err = <-result
 				assert.NoError(t, err)
 			})
 		}
@@ -140,13 +158,25 @@ func TestMetrics(t *testing.T) {
 			assert.True(t, DefaultConn != nil)
 
 			t.Run("Synchronous send", func(t *testing.T) {
-				err := SendAndWait("test", generateMetric(), generateTags())
+				var err error
+
+				err = SendAndWait(generateMetric(), "test")
+				assert.NoError(t, err)
+
+				err = SendWithTagsAndWait(generateMetric(), generateTags(), "test")
 				assert.NoError(t, err)
 			})
 
 			t.Run("Asynchronous send", func(t *testing.T) {
-				result := Send("test", generateMetric(), generateTags())
-				err := <-result
+				var err error
+				result := make(chan error)
+
+				result = SendWithTags(generateMetric(), generateTags(), "test")
+				err = <-result
+				assert.NoError(t, err)
+
+				result = Send(generateMetric(), "test")
+				err = <-result
 				assert.NoError(t, err)
 			})
 		}

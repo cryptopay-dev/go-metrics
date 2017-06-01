@@ -151,26 +151,58 @@ func New(url string, application, hostname string, options ...nats.Option) (*con
 // m.Send(metrics.M{
 // 		"counter": i,
 // })
-func Send(name string, metrics M, tags T) (err chan error) {
+func Send(metrics M, path ...string) (err chan error) {
 	if DefaultConn == nil {
 		return nil
 	}
 
-	return DefaultConn.Send(name, metrics, tags)
+	return DefaultConn.SendWithTags(metrics, nil, path...)
+}
+
+// SendWithTags metrics to NATS queue waiting for response
+//
+// Example:
+// err = SendWithTags(metrics.M{
+// 		"counter": i,
+// }, metrics.T{
+//	    "tag": "sometag",
+// }, "metricname")
+func SendWithTags(metrics M, tags T, path ...string) (err chan error) {
+	if DefaultConn == nil {
+		return nil
+	}
+
+	return DefaultConn.SendWithTags(metrics, tags, path...)
 }
 
 // SendAndWait metrics to NATS queue waiting for response
 //
 // Example:
-// err = m.SendAndWait(metrics.M{
+// err = SendAndWait(metrics.M{
 // 		"counter": i,
-// })
-func SendAndWait(name string, metrics M, tags T) error {
+// }, "metricname")
+func SendAndWait(metrics M, path ...string) error {
 	if DefaultConn == nil {
 		return nil
 	}
 
-	return DefaultConn.SendAndWait(name, metrics, tags)
+	return DefaultConn.SendAndWait(metrics, path...)
+}
+
+// SendWithTagsAndWait metrics to NATS queue waiting for response
+//
+// Example:
+// err = SendWithTags(metrics.M{
+// 		"counter": i,
+// }, metrics.T{
+//	    "tag": "sometag",
+// }, "metricname")
+func SendWithTagsAndWait(metrics M, tags T, path ...string) error {
+	if DefaultConn == nil {
+		return nil
+	}
+
+	return DefaultConn.SendWithTagsAndWait(metrics, tags, path...)
 }
 
 // Send metrics to NATS queue
@@ -178,12 +210,30 @@ func SendAndWait(name string, metrics M, tags T) error {
 // Example:
 // m.Send(metrics.M{
 // 		"counter": i,
-// })
-func (m *conn) Send(name string, metrics M, tags T) chan error {
+// }, "metricname")
+func (m *conn) Send(metrics M, path ...string) chan error {
 	ch := make(chan error, 1)
 
 	go func() {
-		ch <- m.SendAndWait(name, metrics, tags)
+		ch <- m.SendAndWait(metrics, path...)
+	}()
+
+	return ch
+}
+
+// SendWithTags metrics to NATS queue waiting for response
+//
+// Example:
+// err = m.SendWithTags(metrics.M{
+// 		"counter": i,
+// }, metrics.T{
+//	    "tag": "sometag",
+// }, "metricname")
+func (m *conn) SendWithTags(metrics M, tags T, path ...string) chan error {
+	ch := make(chan error, 1)
+
+	go func() {
+		ch <- m.SendWithTagsAndWait(metrics, tags, path...)
 	}()
 
 	return ch
@@ -194,8 +244,10 @@ func (m *conn) Send(name string, metrics M, tags T) chan error {
 // Example:
 // err = m.SendAndWait(metrics.M{
 // 		"counter": i,
-// })
-func (m *conn) SendAndWait(name string, metrics M, tags T) error {
+// }, metrics.T{
+//	    "tag": "sometag",
+// }, "metricname")
+func (m *conn) SendWithTagsAndWait(metrics M, tags T, path ...string) error {
 	m.mu.RLock()
 	if !m.enabled {
 		m.mu.RUnlock()
@@ -215,7 +267,7 @@ func (m *conn) SendAndWait(name string, metrics M, tags T) error {
 	tags["hostname"] = m.hostname
 	m.mu.RUnlock()
 
-	metricName := []string{m.application, name}
+	metricName := append([]string{m.application}, path...)
 	buf := format(strings.Join(metricName, ":"), metrics, tags)
 
 	m.mu.RLock()
@@ -223,6 +275,16 @@ func (m *conn) SendAndWait(name string, metrics M, tags T) error {
 	m.mu.RUnlock()
 
 	return m.nats.Publish(queue, buf)
+}
+
+// SendAndWait metrics to NATS queue waiting for response
+//
+// Example:
+// err = m.SendAndWait(metrics.M{
+// 		"counter": i,
+// }, "metricname")
+func (m *conn) SendAndWait(metrics M, path ...string) error {
+	return m.SendWithTagsAndWait(metrics, nil, path...)
 }
 
 // Disable disables watcher and disconnects
@@ -270,7 +332,8 @@ func (m *conn) Watch(interval time.Duration) error {
 			"next_gc":       mem.NextGC,
 			"pause_ns":      mem.PauseNs[(mem.NumGC+255)%256],
 		}
-		err := m.SendAndWait("gostats", metric, nil)
+
+		err := m.SendAndWait(metric, "gostats")
 		if err != nil {
 			return err
 		}

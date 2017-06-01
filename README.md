@@ -45,12 +45,15 @@ func main() {
 
     for i:=0; i<10; i++ {
         // You metrics will be reported at application_name:metric
+        // You metrics will be send to: mymetric,user=test@example.com counter=1,gauge=true,string=name
+        // E.t.c.
         err = metrics.SendAndWait("metric", metrics.M{
             "counter": i,
             "gauge": true,
+            "string": "name",
         }, metrics.T{
             "user": "test@example.com"
-        })
+        }, "mymetric")
 
         if err != nil {
             log.Fatal(err)
