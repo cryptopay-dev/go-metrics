@@ -28,6 +28,8 @@ app - application name
 ```
 
 ## Usage
+
+## Basic
 ```go
 package main
 
@@ -61,3 +63,6 @@ func main() {
     }
 }
 ```
+
+## More stuff
+You can find more examples in `/examples` folder 

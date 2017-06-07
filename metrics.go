@@ -327,7 +327,7 @@ func (m *conn) Watch(interval time.Duration) error {
 		metric := M{
 			"alloc":         mem.Alloc,
 			"alloc_objects": mem.HeapObjects,
-			"gorotines":     runtime.NumGoroutine(),
+			"goroutines":    runtime.NumGoroutine(),
 			"gc":            mem.LastGC,
 			"next_gc":       mem.NextGC,
 			"pause_ns":      mem.PauseNs[(mem.NumGC+255)%256],
