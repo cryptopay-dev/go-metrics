@@ -57,10 +57,8 @@ func TestMetrics(t *testing.T) {
 		var err error
 
 		Disable()
-		chanErr := Send(M{"field": 1}, "test")
-		assert.True(t, chanErr == nil)
-		chanErr = SendWithTags(M{"field": 1}, T{"tag": "string"}, "test")
-		assert.NoError(t, err)
+		Send(M{"field": 1}, "test")
+		SendWithTags(M{"field": 1}, T{"tag": "string"}, "test")
 
 		err = SendAndWait(M{"field": 1}, "test")
 		assert.NoError(t, err)
@@ -137,16 +135,8 @@ func TestMetrics(t *testing.T) {
 			})
 
 			t.Run("Asynchronous send", func(t *testing.T) {
-				var err error
-				result := make(chan error)
-
-				result = metrics.SendWithTags(generateMetric(), generateTags(), "test")
-				err = <-result
-				assert.NoError(t, err)
-
-				result = metrics.Send(generateMetric(), "test")
-				err = <-result
-				assert.NoError(t, err)
+				metrics.SendWithTags(generateMetric(), generateTags(), "test")
+				metrics.Send(generateMetric(), "test")
 			})
 		}
 	})
@@ -168,16 +158,8 @@ func TestMetrics(t *testing.T) {
 			})
 
 			t.Run("Asynchronous send", func(t *testing.T) {
-				var err error
-				result := make(chan error)
-
-				result = SendWithTags(generateMetric(), generateTags(), "test")
-				err = <-result
-				assert.NoError(t, err)
-
-				result = Send(generateMetric(), "test")
-				err = <-result
-				assert.NoError(t, err)
+				SendWithTags(generateMetric(), generateTags(), "test")
+				Send(generateMetric(), "test")
 			})
 		}
 	})
