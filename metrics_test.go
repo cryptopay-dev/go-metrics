@@ -39,6 +39,10 @@ func TestMain(m *testing.M) {
 		natsURL = nats.DefaultURL
 	}
 
+	SetErrorHandler(func(err error) {
+		panic(err)
+	})
+
 	m.Run()
 }
 

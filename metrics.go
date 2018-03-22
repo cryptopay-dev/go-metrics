@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"sort"
 	"strings"
 	"sync"
@@ -13,6 +14,24 @@ import (
 
 	"github.com/nats-io/go-nats"
 )
+
+var (
+	// ErrAppNameNotSet not set
+	ErrAppNameNotSet = errors.New("application name not set")
+	// ErrHostNameNotSet not set
+	ErrHostNameNotSet = errors.New("hostname not set")
+)
+
+// Conn - connection interface
+type Conn interface {
+	SetErrorHandler(fn ErrorHandler)
+	Send(metrics M, path ...string)
+	SendWithTags(metrics M, tags T, path ...string)
+	SendWithTagsAndWait(metrics M, tags T, path ...string) error
+	SendAndWait(metrics M, path ...string) error
+	Disable()
+	Watch(interval time.Duration) error
+}
 
 type conn struct {
 	mu           sync.RWMutex
@@ -25,6 +44,7 @@ type conn struct {
 	application  string
 }
 
+// ErrorHandler type
 type ErrorHandler func(err error)
 
 // M metrics storage
@@ -44,7 +64,7 @@ type T map[string]string
 
 // DefaultConn shared default metric
 // connection
-var DefaultConn *conn
+var DefaultConn Conn
 
 // DefaultErrorHandler just printing all errors comes from
 // async writes to Stderr
@@ -123,7 +143,7 @@ func Setup(url string, application, hostname string, options ...nats.Option) err
 //         }
 //     }
 // }
-func New(url string, application, hostname string, options ...nats.Option) (*conn, error) {
+func New(url string, application, hostname string, options ...nats.Option) (Conn, error) {
 	if url == "" {
 		return &conn{
 			enabled: false,
@@ -132,11 +152,11 @@ func New(url string, application, hostname string, options ...nats.Option) (*con
 
 	// Getting current environment
 	if application == "" {
-		return nil, errors.New("Application name not set")
+		return nil, ErrAppNameNotSet
 	}
 
 	if hostname == "" {
-		return nil, errors.New("Hostname not set")
+		return nil, ErrHostNameNotSet
 	}
 
 	nc, err := nats.Connect(url, options...)
@@ -212,14 +232,14 @@ func SendWithTagsAndWait(metrics M, tags T, path ...string) error {
 	return DefaultConn.SendWithTagsAndWait(metrics, tags, path...)
 }
 
-// SetErrorHandler changes error handler to providen one
+// SetErrorHandler changes error handler to provided one
 func SetErrorHandler(fn ErrorHandler) {
 	if DefaultConn != nil {
 		DefaultConn.SetErrorHandler(fn)
 	}
 }
 
-// SetErrorHandler changes error handler to providen one
+// SetErrorHandler changes error handler to provided one
 func (m *conn) SetErrorHandler(fn ErrorHandler) {
 	m.errorHandler = fn
 }
@@ -331,12 +351,18 @@ func (m *conn) Watch(interval time.Duration) error {
 		// Getting memory stats
 		runtime.ReadMemStats(&mem)
 		metric := M{
-			"alloc":         mem.Alloc,
-			"alloc_objects": mem.HeapObjects,
-			"goroutines":    runtime.NumGoroutine(),
-			"gc":            mem.LastGC,
-			"next_gc":       mem.NextGC,
-			"pause_ns":      mem.PauseNs[(mem.NumGC+255)%256],
+			"alloc":          mem.Alloc,
+			"alloc_heap":     mem.HeapAlloc,
+			"alloc_heap_sys": mem.HeapSys,
+			"mallocs":        mem.Mallocs,
+			"alloc_objects":  mem.HeapObjects,
+			"sys":            mem.Sys,
+			"frees":          mem.Frees,
+			"threads":        pprof.Lookup("threadcreate").Count(),
+			"goroutines":     runtime.NumGoroutine(),
+			"gc":             mem.LastGC,
+			"next_gc":        mem.NextGC,
+			"pause_ns":       mem.PauseNs[(mem.NumGC+255)%256],
 		}
 
 		err := m.SendAndWait(metric, "gostats")
