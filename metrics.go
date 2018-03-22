@@ -16,10 +16,10 @@ import (
 )
 
 var (
-	// ErrAppName not set
-	ErrAppName = errors.New("application name not set")
-	// ErrHostName not set
-	ErrHostName = errors.New("hostname not set")
+	// ErrAppNameNotSet not set
+	ErrAppNameNotSet = errors.New("application name not set")
+	// ErrHostNameNotSet not set
+	ErrHostNameNotSet = errors.New("hostname not set")
 )
 
 // Conn - connection interface
@@ -152,11 +152,11 @@ func New(url string, application, hostname string, options ...nats.Option) (Conn
 
 	// Getting current environment
 	if application == "" {
-		return nil, ErrAppName
+		return nil, ErrAppNameNotSet
 	}
 
 	if hostname == "" {
-		return nil, ErrHostName
+		return nil, ErrHostNameNotSet
 	}
 
 	nc, err := nats.Connect(url, options...)
